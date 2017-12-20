@@ -104,7 +104,7 @@ def do_background_check(reddit, log, user):
     # background check
 
     # basic info
-    msg = 'u/{}    \n'.format(user.name)
+    msg = comment_format('Username', user.name)
     msg += comment_format('Link Karma', user.link_karma)
     msg += comment_format('Comment Karma', user.comment_karma)
 
@@ -159,7 +159,7 @@ def do_background_check(reddit, log, user):
     CommentKarmaInSub = dict([(s, CommentKarmaInSub[s]) for s in sorted(CommentKarmaInSub, key=CommentKarmaInSub.get, reverse=True)][:topCommentsInSubount])
     CommentsInSub = dict([(s, CommentsInSub[s]) for s in sorted(CommentsInSub, key=CommentsInSub.get, reverse=True)][:topCommentsInSubount])
 
-
+    # add to message
     msg += comment_format('No. of submissions:', submissionCount)
     msg += comment_format('average submission Karma', avgSubmissionKarma)
     msg += comment_format('most submission karma in', str(submissionKarmaInSub))
@@ -170,6 +170,11 @@ def do_background_check(reddit, log, user):
     msg += comment_format('most comments in', str(CommentsInSub))
 
     # TODO: get subreddit moderated by user
+
+    #
+    # # WARNING: TAKES FOR EVER TO RUN
+    #
+
     # # moderator of
     # modSubs = []
     # for s in submissionsInSub:
@@ -213,9 +218,9 @@ def main():
     log = get_logger()
     log.info('logging in...')
     reddit = praw.Reddit('sherlockbot')
-    # mentionThread = Thread(target=check_on_mention, args=(reddit,log), name='mentionThread')
-    # mentionThread.start()
-    do_background_check(reddit, log, reddit.redditor('secondlamp'))
+    mentionThread = Thread(target=check_on_mention, args=(reddit,log), name='mentionThread')
+    mentionThread.start()
+    # do_background_check(reddit, log, reddit.redditor('sherlockbot'))
     # TODO: detect when to do checks on its own without being called
 
 if __name__ == '__main__':
