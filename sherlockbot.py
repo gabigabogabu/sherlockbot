@@ -90,6 +90,9 @@ def background_check(reddit, log, user, comment):
     msg = do_background_check(reddit, log, user)
     post_results(reddit, log, comment, msg)
 
+def comment_format(arg, line):
+    return '{}:\t{}    \n'.format(arg, line)
+
 def do_background_check(reddit, log, user):
     'does actual background check'
     log.info('doing background check for u/{}'.format(user.name))
@@ -101,33 +104,19 @@ def do_background_check(reddit, log, user):
     # background check
 
     # basic info
-    msg = ''
-    msg += 'u/' + user.name + '    \n'
-    msg += 'link_karma:\t' + str(user.link_karma) + '    \n'
-    msg += 'comment_karma:\t' + str(user.comment_karma) + '    \n'
+    msg = 'u/{}    \n'.format(user.name)
+    msg += comment_format('Link Karma', user.link_karma)
+    msg += comment_format('Comment Karma', user.comment_karma)
 
     # account age
     account_created = datetime.datetime.fromtimestamp(user.created)
     account_age = datetime.datetime.now() - datetime.datetime.fromtimestamp(user.created)
-    msg += 'account opened:\t' + str(account_created) + '    \n'
-    msg += 'account age:\t' + str(account_age) + '    \n'
+    msg += comment_format('account opened', str(account_created))
+    msg += comment_format('account age', str(account_age))
 
     # users most frequent subreddits
-    commentCount = 0 # how many comments were made
-    CommentsInSub = {} # subreddits and how many comments were made
-    CommentKarmaInSub = {} # subreddit and how much karma was earned
-    for c in user.comments.top(limit=None):
-        commentCount += 1
-        if c.subreddit.display_name in CommentKarmaInSub.keys():
-            CommentKarmaInSub[c.subreddit.display_name] += 1
-        else:
-            CommentKarmaInSub[c.subreddit.display_name] = 1
 
-        if c.subreddit.display_name in CommentsInSub.keys():
-            CommentsInSub[c.subreddit.display_name] += c.score
-        else:
-            CommentsInSub[c.subreddit.display_name] = c.score
-
+    # process submissions
     submissionCount = 0 # how many submissions were made
     submissionsInSub = {} # subreddits and how many submissions were made
     submissionKarmaInSub = {} # subreddit and how much karma was earned
@@ -142,16 +131,34 @@ def do_background_check(reddit, log, user):
             submissionKarmaInSub[s.subreddit.display_name] += s.score
         else:
             submissionKarmaInSub[s.subreddit.display_name] = s.score
-
     submissionKarmaInSub = dict([(s, submissionKarmaInSub[s]) for s in sorted(submissionKarmaInSub, key=submissionKarmaInSub.get, reverse=True)][:topCommentsInSubount])
     submissionsInSub = dict([(s, submissionsInSub[s]) for s in sorted(submissionsInSub, key=submissionsInSub.get, reverse=True)][:topCommentsInSubount])
-    msg += 'most submission karma in:\t' + str(submissionKarmaInSub)  + '    \n'
-    msg += 'most submissions in:\t' + str(submissionsInSub)  + '    \n'
 
+    # process comments
+    commentCount = 0 # how many comments were made
+    CommentsInSub = {} # subreddits and how many comments were made
+    CommentKarmaInSub = {} # subreddit and how much karma was earned
+    for c in user.comments.top(limit=None):
+        commentCount += 1
+        if c.subreddit.display_name in CommentKarmaInSub.keys():
+            CommentKarmaInSub[c.subreddit.display_name] += 1
+        else:
+            CommentKarmaInSub[c.subreddit.display_name] = 1
+
+        if c.subreddit.display_name in CommentsInSub.keys():
+            CommentsInSub[c.subreddit.display_name] += c.score
+        else:
+            CommentsInSub[c.subreddit.display_name] = c.score
     CommentKarmaInSub = dict([(s, CommentKarmaInSub[s]) for s in sorted(CommentKarmaInSub, key=CommentKarmaInSub.get, reverse=True)][:topCommentsInSubount])
     CommentsInSub = dict([(s, CommentsInSub[s]) for s in sorted(CommentsInSub, key=CommentsInSub.get, reverse=True)][:topCommentsInSubount])
-    msg += 'most comment karma in:\t' + str(CommentKarmaInSub)  + '    \n'
-    msg += 'most comments in:\t' + str(CommentsInSub)  + '    \n'
+
+
+    msg += comment_format('# of submissions:', submissionCount)
+    msg += comment_format('most submission karma in', str(submissionKarmaInSub))
+    msg += comment_format('most submissions in', str(submissionsInSub)
+    msg += comment_format('# of comments', commentCount)
+    msg += comment_format('most comment karma in', str(CommentKarmaInSub))
+    msg += comment_format('most comments in', str(CommentsInSub))
 
     # TODO: get subreddit moderated by user
     # # moderator of
@@ -163,7 +170,7 @@ def do_background_check(reddit, log, user):
     # modSubs = modSubs
     # msg += 'moderates:\t{}    \n'.format(str(modSubs))
 
-    # users top submissions
+    # users top submissions as table
     msg += '\ntop submissions:    \n\n'
     msg += 'Sub|Points|text\n'
     msg += '--|--|--\n'
@@ -173,7 +180,7 @@ def do_background_check(reddit, log, user):
         else:
             msg += s.subreddit.display_name + ' | ' + str(s.score) + ' | ' + s.selftext.replace('\n', ' ') + '\n'
 
-    # users top comments
+    # users top comments as table
     msg += '\ntop comments:    \n\n'
     msg += 'Sub|Points|text\n'
     msg += '--|--|--\n'
@@ -181,7 +188,6 @@ def do_background_check(reddit, log, user):
         msg += c.subreddit.display_name + ' | ' + str(c.score) + ' | ' + c.body.replace('\n', ' ') + '\n'
 
     msg += '---\n^(I am a bot v{}. This message was created at {}.)'.format(__version__, str(datetime.datetime.now()))
-
 
     # ideas:
     # scan users comments for personal info
