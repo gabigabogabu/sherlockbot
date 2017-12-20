@@ -131,8 +131,12 @@ def do_background_check(reddit, log, user):
             submissionKarmaInSub[s.subreddit.display_name] += s.score
         else:
             submissionKarmaInSub[s.subreddit.display_name] = s.score
+    avgSubmissionKarma = 0
+    if submissionCount > 0:
+        avgSubmissionKarma = user.link_karma / submissionCount
     submissionKarmaInSub = dict([(s, submissionKarmaInSub[s]) for s in sorted(submissionKarmaInSub, key=submissionKarmaInSub.get, reverse=True)][:topCommentsInSubount])
     submissionsInSub = dict([(s, submissionsInSub[s]) for s in sorted(submissionsInSub, key=submissionsInSub.get, reverse=True)][:topCommentsInSubount])
+    # averageSubmissionKarmaInSub = {k: submissionKarmaInSub[k]/submissionsInSub[k] for k in submissionKarmaInSub}
 
     # process comments
     commentCount = 0 # how many comments were made
@@ -149,14 +153,19 @@ def do_background_check(reddit, log, user):
             CommentsInSub[c.subreddit.display_name] += c.score
         else:
             CommentsInSub[c.subreddit.display_name] = c.score
+    avgCommentKarma = 0
+    if commentCount > 0:
+        avgCommentKarma = user.comment_karma / commentCount
     CommentKarmaInSub = dict([(s, CommentKarmaInSub[s]) for s in sorted(CommentKarmaInSub, key=CommentKarmaInSub.get, reverse=True)][:topCommentsInSubount])
     CommentsInSub = dict([(s, CommentsInSub[s]) for s in sorted(CommentsInSub, key=CommentsInSub.get, reverse=True)][:topCommentsInSubount])
 
 
-    msg += comment_format('# of submissions:', submissionCount)
+    msg += comment_format('No. of submissions:', submissionCount)
+    msg += comment_format('average submission Karma', avgSubmissionKarma)
     msg += comment_format('most submission karma in', str(submissionKarmaInSub))
-    msg += comment_format('most submissions in', str(submissionsInSub)
-    msg += comment_format('# of comments', commentCount)
+    msg += comment_format('most submissions in', str(submissionsInSub))
+    msg += comment_format('No. of comments', commentCount)
+    msg += comment_format('average comment Karma', avgCommentKarma)
     msg += comment_format('most comment karma in', str(CommentKarmaInSub))
     msg += comment_format('most comments in', str(CommentsInSub))
 
@@ -203,9 +212,10 @@ def post_results(reddit, log, comment, msg):
 def main():
     log = get_logger()
     log.info('logging in...')
-    r = praw.Reddit('sherlockbot')
-    mentionThread = Thread(target=check_on_mention, args=(r,log), name='mentionThread')
-    mentionThread.start()
+    reddit = praw.Reddit('sherlockbot')
+    # mentionThread = Thread(target=check_on_mention, args=(reddit,log), name='mentionThread')
+    # mentionThread.start()
+    do_background_check(reddit, log, reddit.redditor('secondlamp'))
     # TODO: detect when to do checks on its own without being called
 
 if __name__ == '__main__':
