@@ -3,9 +3,8 @@ import datetime # account age etc
 import logging  # logging
 import re       # regex to extrect usernames
 import prawcore # for exception handling
-import requests # for exception handling and getting moderated subreddits
+import requests # for exception handling
 import urllib3  # for exception handling
-from xml import dom # for getting moderated subreddits
 from time import sleep  # retry throtteling
 from threading import Thread    # multithreading
 from praw.models import Comment # classify items as comment
@@ -63,9 +62,7 @@ def check_on_mention(reddit, log):
 					if isinstance(item, Comment): users.append(item.parent().author)
 
 				# don't do checks on itself
-				me = str(reddit.user.me())
-				if me in users: users.remove(me)
-
+				users.remove(reddit.user.me())
 				# launch check for each mention
 				for u in users:
 					t = Thread(target=background_check, args=(reddit, log, u, item), name=str(item)+'-Thread')
@@ -73,7 +70,7 @@ def check_on_mention(reddit, log):
 					t.start()
 
 				# mark as read, so it does not reappear after relaunches
-				# item.mark_read()
+				item.mark_read()
 
 				# clean up
 				threads = [t for t in threads if t.is_alive()]
@@ -96,52 +93,6 @@ def background_check(reddit, log, user, comment):
 def comment_format(arg, line):
 	return '{}:\t{}    \n'.format(arg, line)
 
-def get_submission_count(user):
-	return sum([1 for s in user.submissions.top(limit=None)])
-
-def get_comment_count(user):
-	return sum([1 for c in user.comments.top(limit=None)])
-
-def get_submissions_per_sub(user, top=5):
-	submissions_in_sub = {} # subreddits and how many submissions were made
-	for s in user.submissions.top(limit=None):
-		if s.subreddit.display_name in submissions_in_sub.keys():
-			submissions_in_sub[s.subreddit.display_name] += 1
-		else:
-			submissions_in_sub[s.subreddit.display_name] = 1
-	submissions_in_sub = dict([(s, submissions_in_sub[s]) for s in sorted(submissions_in_sub, key=submissions_in_sub.get, reverse=True)][:top])
-	return submissions_in_sub
-
-def get_comments_per_sub(user, top=5):
-	comments_in_sub = {} # subreddits and how many comments were made
-	for c in user.comments.top(limit=None):
-		if c.subreddit.display_name in comments_in_sub.keys():
-			comments_in_sub[c.subreddit.display_name] += 1
-		else:
-			comments_in_sub[c.subreddit.display_name] = 1
-	comments_in_sub = dict([(s, comments_in_sub[s]) for s in sorted(comments_in_sub, key=comments_in_sub.get, reverse=True)][:top])
-	return comments_in_sub
-
-def get_submission_karma_per_sub(user, top=5):
-	submission_karma_in_sub = {} # subreddit and how much karma was earned
-	for s in user.submissions.top(limit=None):
-		if s.subreddit.display_name in submission_karma_in_sub.keys():
-			submission_karma_in_sub[s.subreddit.display_name] += s.score
-		else:
-			submission_karma_in_sub[s.subreddit.display_name] = s.score
-	submission_karma_in_sub = dict([(s, submission_karma_in_sub[s]) for s in sorted(submission_karma_in_sub, key=submission_karma_in_sub.get, reverse=True)][:top])
-	return submission_karma_in_sub
-
-def get_comment_karma_per_sub(user, top=5):
-	comment_karma_in_sub = {} # subreddit and how much karma was earned
-	for c in user.comments.top(limit=None):
-		if c.subreddit.display_name in comment_karma_in_sub.keys():
-			comment_karma_in_sub[c.subreddit.display_name] += c.score
-		else:
-			comment_karma_in_sub[c.subreddit.display_name] = c.score
-	comment_karma_in_sub = dict([(s, comment_karma_in_sub[s]) for s in sorted(comment_karma_in_sub, key=comment_karma_in_sub.get, reverse=True)][:top])
-	return comment_karma_in_sub
-
 def do_background_check(reddit, log, user):
 	'''does actual background check'''
 	log.info('doing background check for u/{}'.format(user.name))
@@ -163,20 +114,58 @@ def do_background_check(reddit, log, user):
 	msg += comment_format('account opened', str(account_created))
 	msg += comment_format('account age', str(account_age))
 
-	# submissions stats
-	submission_count = get_submission_count(user)
-	submission_karma_in_sub = get_submission_karma_per_sub(user)
-	submissions_in_sub = get_submissions_per_sub(user)
-	# comment stats
-	comment_count = get_comment_count(user)
-	comment_karma_in_sub = get_comment_karma_per_sub(user)
-	comments_in_sub = get_comments_per_sub(user)
+	# users most frequent subreddits
+
+	# process submissions
+	submission_count = 0 # how many submissions were made
+	submissions_in_sub = {} # subreddits and how many submissions were made
+	submission_karma_in_sub = {} # subreddit and how much karma was earned
+	for s in user.submissions.top(limit=None):
+		submission_count += 1
+		if s.subreddit.display_name in submissions_in_sub.keys():
+			submissions_in_sub[s.subreddit.display_name] += 1
+		else:
+			submissions_in_sub[s.subreddit.display_name] = 1
+
+		if s.subreddit.display_name in submission_karma_in_sub.keys():
+			submission_karma_in_sub[s.subreddit.display_name] += s.score
+		else:
+			submission_karma_in_sub[s.subreddit.display_name] = s.score
+	avgSubmissionKarma = 0
+	if submission_count > 0:
+		avgSubmissionKarma = user.link_karma / submission_count
+	submission_karma_in_sub = dict([(s, submission_karma_in_sub[s]) for s in sorted(submission_karma_in_sub, key=submission_karma_in_sub.get, reverse=True)][:topcomments_in_subount])
+	submissions_in_sub = dict([(s, submissions_in_sub[s]) for s in sorted(submissions_in_sub, key=submissions_in_sub.get, reverse=True)][:topcomments_in_subount])
+	# averageSubmission_karma_in_sub = {k: submission_karma_in_sub[k]/submissions_in_sub[k] for k in submission_karma_in_sub}
+
+	# process comments
+	comment_count = 0 # how many comments were made
+	comments_in_sub = {} # subreddits and how many comments were made
+	comment_karma_in_sub = {} # subreddit and how much karma was earned
+	for c in user.comments.top(limit=None):
+		comment_count += 1
+		if c.subreddit.display_name in comment_karma_in_sub.keys():
+			comment_karma_in_sub[c.subreddit.display_name] += 1
+		else:
+			comment_karma_in_sub[c.subreddit.display_name] = 1
+
+		if c.subreddit.display_name in comments_in_sub.keys():
+			comments_in_sub[c.subreddit.display_name] += c.score
+		else:
+			comments_in_sub[c.subreddit.display_name] = c.score
+	avgCommentKarma = 0
+	if comment_count > 0:
+		avgCommentKarma = user.comment_karma / comment_count
+	comment_karma_in_sub = dict([(s, comment_karma_in_sub[s]) for s in sorted(comment_karma_in_sub, key=comment_karma_in_sub.get, reverse=True)][:topcomments_in_subount])
+	comments_in_sub = dict([(s, comments_in_sub[s]) for s in sorted(comments_in_sub, key=comments_in_sub.get, reverse=True)][:topcomments_in_subount])
 
 	# add to message
-	msg += comment_format('No. of submissions', submission_count)
+	msg += comment_format('No. of submissions:', submission_count)
+	msg += comment_format('average submission Karma', avgSubmissionKarma)
 	msg += comment_format('most submission karma in', str(submission_karma_in_sub))
 	msg += comment_format('most submissions in', str(submissions_in_sub))
 	msg += comment_format('No. of comments', comment_count)
+	msg += comment_format('average comment Karma', avgCommentKarma)
 	msg += comment_format('most comment karma in', str(comment_karma_in_sub))
 	msg += comment_format('most comments in', str(comments_in_sub))
 
@@ -191,7 +180,7 @@ def do_background_check(reddit, log, user):
 	# for s in submissions_in_sub:
 	#     if user in reddit.subreddit(s).moderator():
 	#         modSubs.append(reddit.subreddit(s))
-	
+	#
 	# modSubs = modSubs
 	# msg += 'moderates:\t{}    \n'.format(str(modSubs))
 
@@ -229,7 +218,6 @@ def main():
 	log = get_logger()
 	log.info('logging in...')
 	reddit = praw.Reddit('sherlockbot')
-	log.info('success')
 	mentionThread = Thread(target=check_on_mention, args=(reddit,log), name='mentionThread')
 	mentionThread.start()
 	# do_background_check(reddit, log, reddit.redditor('sherlockbot'))
