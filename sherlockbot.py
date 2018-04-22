@@ -145,14 +145,14 @@ def do_background_check(reddit, log, user):
 	for c in user.comments.top(limit=None):
 		comment_count += 1
 		if c.subreddit.display_name in comment_karma_in_sub.keys():
-			comment_karma_in_sub[c.subreddit.display_name] += 1
+			comment_karma_in_sub[c.subreddit.display_name] += c.score
 		else:
-			comment_karma_in_sub[c.subreddit.display_name] = 1
+			comment_karma_in_sub[c.subreddit.display_name] = c.score
 
 		if c.subreddit.display_name in comments_in_sub.keys():
-			comments_in_sub[c.subreddit.display_name] += c.score
+			comments_in_sub[c.subreddit.display_name] += 1
 		else:
-			comments_in_sub[c.subreddit.display_name] = c.score
+			comments_in_sub[c.subreddit.display_name] = 1
 	avgCommentKarma = 0
 	if comment_count > 0:
 		avgCommentKarma = user.comment_karma / comment_count
