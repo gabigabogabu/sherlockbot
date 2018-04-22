@@ -1,3 +1,3 @@
 # SherlockBot
 
-Listens for `!sherlock <username>` and answers with a summary of their profile
+Listens for mentions with other usernames and answers with a summary of their profiles
